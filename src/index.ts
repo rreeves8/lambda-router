@@ -1,6 +1,6 @@
 import {
   APIGatewayProxyEventV2,
-  APIGatewayProxyResultV2,
+  APIGatewayProxyStructuredResultV2,
   Callback,
   Context,
 } from "aws-lambda";
@@ -9,26 +9,28 @@ import { CreateRemixOptions, createRequestHandler } from "./remixHandler";
 export type RouteHandler<RouterContext extends object> = (
   event: APIGatewayProxyEventV2,
   context: Context & RouterContext,
-  callBack: Callback<APIGatewayProxyResultV2<never>>
-) => Promise<APIGatewayProxyResultV2>;
+  callBack: Callback<APIGatewayProxyStructuredResultV2>
+) => Promise<APIGatewayProxyStructuredResultV2>;
 
 export type MiddleWare<RouterContext extends object> = (
   event: APIGatewayProxyEventV2,
   context: Context & RouterContext,
-  next: (response?: APIGatewayProxyResultV2) => void
+  next: (response?: APIGatewayProxyStructuredResultV2) => void
 ) => Promise<void>;
 
 type Configure<RouterContext extends object> = {
   get: (path: string, handler: RouteHandler<RouterContext>) => void;
   post: (path: string, handler: RouteHandler<RouterContext>) => void;
-  remix: <T>(options: CreateRemixOptions) => void;
+  remix: (handler: RouteHandler<RouterContext>) => void;
   use: (handler: MiddleWare<RouterContext>) => void;
   build: () => (
     event: APIGatewayProxyEventV2,
     context: Context,
-    callBack: Callback<APIGatewayProxyResultV2<never>>
-  ) => Promise<APIGatewayProxyResultV2>;
+    callBack: Callback<APIGatewayProxyStructuredResultV2>
+  ) => Promise<APIGatewayProxyStructuredResultV2>;
 };
+
+export * from "./remixHandler";
 
 export function lambdaRouter<
   RouterContext extends object
@@ -63,9 +65,9 @@ export function lambdaRouter<
         });
       }
     },
-    remix: (options) => {
+    remix: (handler) => {
       handlers.set("remix", {
-        remix: createRequestHandler(options),
+        remix: handler,
       });
     },
     use: (handler) => {
@@ -76,15 +78,15 @@ export function lambdaRouter<
         const routerContext = {} as RouterContext;
 
         for (const mw of middleware) {
-          const result = await new Promise<APIGatewayProxyResultV2 | undefined>(
-            (res) => {
-              mw(
-                event,
-                { ...context, ...routerContext } as Context & RouterContext,
-                res
-              );
-            }
-          );
+          const result = await new Promise<
+            APIGatewayProxyStructuredResultV2 | undefined
+          >((res) => {
+            mw(
+              event,
+              { ...context, ...routerContext } as Context & RouterContext,
+              res
+            );
+          });
 
           if (result) {
             return result;
