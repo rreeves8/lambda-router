@@ -21,7 +21,7 @@ export type MiddleWare<RouterContext extends object> = (
 type Configure<RouterContext extends object> = {
   get: (path: string, handler: RouteHandler<RouterContext>) => void;
   post: (path: string, handler: RouteHandler<RouterContext>) => void;
-  remix: (options: CreateRemixOptions<RouterContext>) => void;
+  remix: <T>(options: CreateRemixOptions) => void;
   use: (handler: MiddleWare<RouterContext>) => void;
   build: () => (
     event: APIGatewayProxyEventV2,

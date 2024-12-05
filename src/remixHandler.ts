@@ -12,29 +12,21 @@ import type {
 } from "aws-lambda";
 import type { RouteHandler } from "./";
 
-export type GetLoadContextFunction<RouteContext> = (
-  event: APIGatewayProxyEventV2,
-  context: Context & RouteContext
-) => AppLoadContext;
-
-export type CreateRemixOptions<RouteContext> = {
+export type CreateRemixOptions = {
   build: ServerBuild;
-  getLoadContext: GetLoadContextFunction<RouteContext>;
   mode?: string;
 };
 
-export function createRequestHandler<RouteContext extends object>({
+export function createRequestHandler({
   build,
-  getLoadContext,
   mode = process.env.NODE_ENV,
-}: CreateRemixOptions<RouteContext>): RouteHandler<RouteContext> {
+}: CreateRemixOptions): RouteHandler<object> {
   let handleRequest = createRemixRequestHandler(build, mode);
 
   return async (event, context) => {
     const request = createRemixRequest(event);
-    const loadContext = getLoadContext(event, context);
 
-    const response = await handleRequest(request, loadContext);
+    const response = await handleRequest(request, context as AppLoadContext);
 
     return sendRemixResponse(response);
   };
