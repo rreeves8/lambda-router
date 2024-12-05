@@ -1,12 +1,14 @@
 import {
   APIGatewayProxyEventV2,
   APIGatewayProxyResultV2,
+  Callback,
   Context,
 } from "aws-lambda";
 
-export type Routehandler<RouterContext extends object> = (
+export type RouteHandler<RouterContext extends object> = (
   event: APIGatewayProxyEventV2,
-  context: Context & RouterContext
+  context: Context & RouterContext,
+  callBack: Callback<APIGatewayProxyResultV2<never>>
 ) => Promise<APIGatewayProxyResultV2>;
 
 export type MiddleWare<RouterContext extends object> = (
@@ -26,11 +28,12 @@ type SetHandler<RouterContext extends object> = (
 type Configure<RouterContext extends object> = {
   get: SetHandler<RouterContext>;
   post: SetHandler<RouterContext>;
-  all: (handler: Routehandler<RouterContext>) => void;
+  all: (handler: RouteHandler<RouterContext>) => void;
   use: (handler: MiddleWare<RouterContext>) => void;
   build: () => (
     event: APIGatewayProxyEventV2,
-    context: Context
+    context: Context,
+    callBack: Callback<APIGatewayProxyResultV2<never>>
   ) => Promise<APIGatewayProxyResultV2>;
 };
 
@@ -40,9 +43,9 @@ export function lambdaRouter<
   const handlers = new Map<
     string,
     {
-      get?: Routehandler<RouterContext>;
-      post?: Routehandler<RouterContext>;
-      all?: Routehandler<RouterContext>;
+      get?: RouteHandler<RouterContext>;
+      post?: RouteHandler<RouterContext>;
+      all?: RouteHandler<RouterContext>;
     }
   >();
 
@@ -76,7 +79,7 @@ export function lambdaRouter<
       middleware.push(handler);
     },
     build: () => {
-      return async (event, context) => {
+      return async (event, context, callBack) => {
         const routerContext = {} as RouterContext;
 
         for (const mw of middleware) {
@@ -112,10 +115,14 @@ export function lambdaRouter<
             return fourOfour;
           }
 
-          return await (handler.all as Routehandler<RouterContext>)(event, {
-            ...context,
-            ...routerContext,
-          } as Context & RouterContext);
+          return await (handler.all as RouteHandler<RouterContext>)(
+            event,
+            {
+              ...context,
+              ...routerContext,
+            } as Context & RouterContext,
+            callBack
+          );
         }
 
         if (method === "GET") {
@@ -124,10 +131,14 @@ export function lambdaRouter<
             return fourOfour;
           }
 
-          return await getHandler(event, {
-            ...context,
-            ...routerContext,
-          } as Context & RouterContext);
+          return await getHandler(
+            event,
+            {
+              ...context,
+              ...routerContext,
+            } as Context & RouterContext,
+            callBack
+          );
         }
         if (method === "POST") {
           const postHandler = handler.post;
@@ -135,10 +146,14 @@ export function lambdaRouter<
             return fourOfour;
           }
 
-          return await postHandler(event, {
-            ...context,
-            ...routerContext,
-          } as Context & RouterContext);
+          return await postHandler(
+            event,
+            {
+              ...context,
+              ...routerContext,
+            } as Context & RouterContext,
+            callBack
+          );
         }
 
         return fourOfour;
