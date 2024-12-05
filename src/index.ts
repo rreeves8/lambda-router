@@ -4,6 +4,7 @@ import {
   Callback,
   Context,
 } from "aws-lambda";
+import { CreateRemixOptions, createRequestHandler } from "./remixHandler";
 
 export type RouteHandler<RouterContext extends object> = (
   event: APIGatewayProxyEventV2,
@@ -20,7 +21,7 @@ export type MiddleWare<RouterContext extends object> = (
 type Configure<RouterContext extends object> = {
   get: (path: string, handler: RouteHandler<RouterContext>) => void;
   post: (path: string, handler: RouteHandler<RouterContext>) => void;
-  all: (handler: RouteHandler<RouterContext>) => void;
+  remix: (options: CreateRemixOptions<RouterContext>) => void;
   use: (handler: MiddleWare<RouterContext>) => void;
   build: () => (
     event: APIGatewayProxyEventV2,
@@ -37,7 +38,7 @@ export function lambdaRouter<
     {
       get?: RouteHandler<RouterContext>;
       post?: RouteHandler<RouterContext>;
-      all?: RouteHandler<RouterContext>;
+      remix?: RouteHandler<RouterContext>;
     }
   >();
 
@@ -62,9 +63,9 @@ export function lambdaRouter<
         });
       }
     },
-    all: (handler) => {
-      handlers.set("*", {
-        all: handler,
+    remix: (options) => {
+      handlers.set("remix", {
+        remix: createRequestHandler(options),
       });
     },
     use: (handler) => {
@@ -107,7 +108,13 @@ export function lambdaRouter<
             return fourOfour;
           }
 
-          return await (handler.all as RouteHandler<RouterContext>)(
+          const remixHandler = handler.remix;
+
+          if (!remixHandler) {
+            return fourOfour;
+          }
+
+          return await remixHandler(
             event,
             {
               ...context,
