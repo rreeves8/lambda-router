@@ -17,17 +17,9 @@ export type MiddleWare<RouterContext extends object> = (
   next: (response?: APIGatewayProxyResultV2) => void
 ) => Promise<void>;
 
-type SetHandler<RouterContext extends object> = (
-  path: string,
-  handler: (
-    event: APIGatewayProxyEventV2,
-    context: Context & RouterContext
-  ) => Promise<APIGatewayProxyResultV2>
-) => void;
-
 type Configure<RouterContext extends object> = {
-  get: SetHandler<RouterContext>;
-  post: SetHandler<RouterContext>;
+  get: (path: string, handler: RouteHandler<RouterContext>) => void;
+  post: (path: string, handler: RouteHandler<RouterContext>) => void;
   all: (handler: RouteHandler<RouterContext>) => void;
   use: (handler: MiddleWare<RouterContext>) => void;
   build: () => (
