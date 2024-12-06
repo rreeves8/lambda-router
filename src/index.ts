@@ -13,7 +13,7 @@ export type RouteHandler<RouterContext extends object> = (
 
 export type MiddleWare<RouterContext extends object> = (
   event: APIGatewayProxyEventV2,
-  context: Context & RouterContext,
+  context: RouterContext,
   next: (response?: APIGatewayProxyStructuredResultV2) => void
 ) => Promise<void>;
 
@@ -80,11 +80,7 @@ export function lambdaRouter<
           const result = await new Promise<
             APIGatewayProxyStructuredResultV2 | undefined
           >((res) => {
-            mw(
-              event,
-              { ...context, ...routerContext } as Context & RouterContext,
-              res
-            );
+            mw(event, routerContext, res);
           });
 
           if (result) {
