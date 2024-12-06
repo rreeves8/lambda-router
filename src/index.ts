@@ -4,7 +4,6 @@ import {
   Callback,
   Context,
 } from "aws-lambda";
-import { CreateRemixOptions, createRequestHandler } from "./remixHandler";
 
 export type RouteHandler<RouterContext extends object> = (
   event: APIGatewayProxyEventV2,
@@ -104,13 +103,13 @@ export function lambdaRouter<
         };
 
         if (!handler) {
-          const handler = handlers.get("*");
+          const allHandler = handlers.get("remix");
 
-          if (!handler) {
+          if (!allHandler) {
             return fourOfour;
           }
 
-          const remixHandler = handler.remix;
+          const remixHandler = allHandler.remix;
 
           if (!remixHandler) {
             return fourOfour;
