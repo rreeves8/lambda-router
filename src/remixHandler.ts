@@ -15,20 +15,30 @@ import type { RouteHandler } from "./";
 export type CreateRemixOptions = {
   build: ServerBuild;
   mode?: string;
+  log: boolean;
 };
 
 export function createRequestHandler({
   build,
   mode = process.env.NODE_ENV,
+  log = false,
 }: CreateRemixOptions): RouteHandler<object> {
   let handleRequest = createRemixRequestHandler(build, mode);
 
   return async (event, context) => {
     const request = createRemixRequest(event);
 
+    if (log) console.log(request);
+
     const response = await handleRequest(request, context as AppLoadContext);
 
-    return sendRemixResponse(response);
+    if (log) console.log(response);
+
+    const lambdaRes = await sendRemixResponse(response);
+
+    if (log) console.log(lambdaRes);
+
+    return lambdaRes;
   };
 }
 
