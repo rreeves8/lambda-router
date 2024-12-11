@@ -68,7 +68,7 @@ export function lambdaRouter<
       return async (event, context, callBack) => {
         const routerContext = {} as RouterContext;
 
-        const method = event.requestContext.http.method;
+        const method = event.requestContext.http.method.toLowerCase();
         const path = event.rawPath;
 
         for (const { routeName, handler, type } of handlers) {

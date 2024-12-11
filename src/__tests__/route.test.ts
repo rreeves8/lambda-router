@@ -12,7 +12,7 @@ router.use(async (event, context, next) => {
   next();
 });
 
-router.get("/cool", async (event, context) => {
+router.get("/cool/dope", async (event, context) => {
   return {
     statusCode: 200,
     body: "Hello World",
@@ -37,8 +37,8 @@ describe("testing router", () => {
   it("should load", async () => {
     const result = await handler(
       {
-        requestContext: { http: { method: "get" } },
-        rawPath: "/cool",
+        requestContext: { http: { method: "GET" } },
+        rawPath: "/cool/dope",
       } as APIGatewayProxyEventV2,
       {} as Context,
       () => {}
