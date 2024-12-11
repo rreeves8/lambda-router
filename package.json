@@ -5,7 +5,8 @@
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsup"
+    "build": "tsup",
+    "test": "vitest"
   },
   "keywords": [],
   "author": "",
@@ -13,7 +14,8 @@
   "description": "",
   "dependencies": {
     "@remix-run/node": "^2.15.1",
-    "aws-lambda": "^1.0.7"
+    "aws-lambda": "^1.0.7",
+    "vitest": "^2.1.8"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.146",

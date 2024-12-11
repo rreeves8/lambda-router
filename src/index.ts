@@ -20,7 +20,7 @@ export type MiddleWare<RouterContext extends object> = (
 type Configure<RouterContext extends object> = {
   get: (path: string, handler: RouteHandler<RouterContext>) => void;
   post: (path: string, handler: RouteHandler<RouterContext>) => void;
-  remix: (handler: RouteHandler<RouterContext>) => void;
+  all: (handler: RouteHandler<RouterContext>) => void;
   use: (handler: MiddleWare<RouterContext>) => void;
   build: () => (
     event: APIGatewayProxyEventV2,
@@ -34,125 +34,75 @@ export * from "./remixHandler";
 export function lambdaRouter<
   RouterContext extends object
 >(): Configure<RouterContext> {
-  const handlers = new Map<
-    string,
-    {
-      get?: RouteHandler<RouterContext>;
-      post?: RouteHandler<RouterContext>;
-      remix?: RouteHandler<RouterContext>;
-    }
-  >();
-
-  const middleware = new Array<MiddleWare<RouterContext>>();
+  const handlers = new Array<{
+    handler: RouteHandler<RouterContext> | MiddleWare<RouterContext>;
+    type?: "get" | "post";
+    routeName?: string;
+  }>();
 
   return {
     get: (path, handler) => {
-      if (handlers.has(path)) {
-        handlers.get(path)!.get = handler;
-      } else {
-        handlers.set(path, {
-          get: handler,
-        });
-      }
+      handlers.push({
+        handler,
+        type: "get",
+        routeName: path,
+      });
     },
     post: (path, handler) => {
-      if (handlers.has(path)) {
-        handlers.get(path)!.post = handler;
-      } else {
-        handlers.set(path, {
-          post: handler,
-        });
-      }
+      handlers.push({
+        handler,
+        type: "post",
+        routeName: path,
+      });
     },
-    remix: (handler) => {
-      handlers.set("remix", {
-        remix: handler,
+    all: (handler) => {
+      handlers.push({
+        handler,
+        routeName: "*",
       });
     },
     use: (handler) => {
-      middleware.push(handler);
+      handlers.push({ handler });
     },
     build: () => {
       return async (event, context, callBack) => {
         const routerContext = {} as RouterContext;
 
-        for (const mw of middleware) {
-          const result = await new Promise<
-            APIGatewayProxyStructuredResultV2 | undefined
-          >((res) => {
-            mw(event, routerContext, res);
-          });
-
-          if (result) {
-            return result;
-          }
-        }
-
         const method = event.requestContext.http.method;
         const path = event.rawPath;
 
-        const handler = handlers.get(path);
+        for (const { routeName, handler, type } of handlers) {
+          if (!type && !routeName) {
+            const result = await new Promise<
+              APIGatewayProxyStructuredResultV2 | undefined
+            >((res) => {
+              (handler as MiddleWare<RouterContext>)(event, routerContext, res);
+            });
 
-        const fourOfour = {
+            if (result) {
+              return result;
+            }
+          }
+
+          if (
+            (!type && routeName === "*") ||
+            (type === method && path === routeName)
+          ) {
+            return await (handler as RouteHandler<RouterContext>)(
+              event,
+              {
+                ...context,
+                ...routerContext,
+              } as Context & RouterContext,
+              callBack
+            );
+          }
+        }
+
+        return {
           statusCode: 404,
           body: "Not Found",
         };
-
-        if (!handler) {
-          const allHandler = handlers.get("remix");
-
-          if (!allHandler) {
-            return fourOfour;
-          }
-
-          const remixHandler = allHandler.remix;
-
-          if (!remixHandler) {
-            return fourOfour;
-          }
-
-          return await remixHandler(
-            event,
-            {
-              ...context,
-              ...routerContext,
-            } as Context & RouterContext,
-            callBack
-          );
-        }
-
-        if (method === "GET") {
-          const getHandler = handler.get;
-          if (!getHandler) {
-            return fourOfour;
-          }
-
-          return await getHandler(
-            event,
-            {
-              ...context,
-              ...routerContext,
-            } as Context & RouterContext,
-            callBack
-          );
-        }
-        if (method === "POST") {
-          const postHandler = handler.post;
-          if (!postHandler) {
-            return fourOfour;
-          }
-
-          return await postHandler(
-            event,
-            {
-              ...context,
-              ...routerContext,
-            } as Context & RouterContext,
-            callBack
-          );
-        }
-
-        return fourOfour;
       };
     },
   };
